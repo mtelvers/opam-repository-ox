@@ -2,12 +2,7 @@ name: Monitor External Repositories
 
 on:
   schedule:
-  # Every 15 minutes, 8am-6pm, Monday-Friday
-  - cron: '*/15 8-17 * * 1-5'
-  # Hourly during nights on weekdays (before 8am and after 6pm)
-  - cron: '0 0-7,18-23 * * 1-5'
-  # Hourly on weekends (all day Saturday and Sunday)
-  - cron: '0 * * * 0,6'
+  - cron: '0 * * * *'
   workflow_dispatch: # Allow manual triggering
 
 permissions:
