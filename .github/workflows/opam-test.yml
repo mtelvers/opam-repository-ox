@@ -1,0 +1,42 @@
+---
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+
+jobs:
+  test-setup:
+    env:
+      OCAML_VARIANT: ocaml-variants.5.2.0+ox
+    strategy:
+      fail-fast: false
+      matrix:
+        # For info on the OS versions, architecture, etc., see
+        # https://docs.github.com/en/actions/using-github-hosted-runners/using-github-hosted-runners/about-github-hosted-runners#standard-github-hosted-runners-for-public-repositories
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-13, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v4
+
+      - name: Get hash of the ocaml-variant opam file
+        id: hash-opam-file
+        run: |
+          HASH=$(shasum -a 256 packages/ocaml-variants/${OCAML_VARIANT}/opam | awk '{print $1}')
+          echo "hash=${HASH}" >> "$GITHUB_OUTPUT"
+      - uses: ocaml/setup-ocaml@v3
+        with:
+          # Invalidate cache when opam file for the ocaml-variant changes
+          cache-prefix: ${{ steps.hash-opam-file.outputs.hash }}
+          ocaml-compiler: ${{ env.OCAML_VARIANT }}
+          opam-pin: false
+          opam-repositories: |
+            default: .
+      - name: opam install packages
+        run: |
+          opam --version
+          opam repository list
+          opam list
+          opam install ocamlformat merlin ocaml-lsp-server utop
+          opam list
