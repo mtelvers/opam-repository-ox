@@ -1,0 +1,44 @@
+opam-version: "2.0"
+version: "1.1+ox"
+name: "ocaml-index"
+synopsis: "A tool that indexes value usages from cmt files"
+description:
+  "ocaml-index should integrate with the build system to index codebase and allow tools such as Merlin to perform project-wide occurrences queries."
+maintainer: "ulysse@tarides.com"
+authors: "ulysse@tarides.com"
+license: "MIT"
+homepage: "https://github.com/ocaml/merlin"
+bug-reports: "https://github.com/ocaml/merlin/issues"
+depends: [
+  "dune"       {>= "3.0"}
+  "ocaml"      {>= "5.2"}
+  "merlin-lib" {= "5.2.1-502+ox"}
+  "yojson"     {< "3.0.0"}
+  "odoc"       {with-doc}
+  "alcotest"   {with-test & = "1.9.0+ox"}
+]
+build: [
+  ["dune" "subst"] {dev}
+  [
+    "dune"
+    "build"
+    "-p"
+    name
+    "-j"
+    jobs
+    "--promote-install-files=false"
+    "@install"
+    "@runtest" {with-test}
+    "@doc" {with-doc}
+  ]
+  ["dune" "install" "-p" name "--create-install-files" name]
+]
+dev-repo: "git+https://github.com/ocaml/merlin.git"
+x-commit-hash: "0eaccc1b8520d605b1e00685e1c3f8acb5da534c"
+url {
+  src:
+    "https://github.com/oxcaml/merlin/archive/a1c13964b6d44748c0bf538db919e9664240a7f9.tar.gz"
+  checksum:
+    "sha256=f3f9a94e2315475e1964522780926ba6af82e2589d62bf8be846608334661c69"
+}
+
