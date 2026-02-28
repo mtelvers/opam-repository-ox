@@ -1,0 +1,85 @@
+name: Monitor External Repositories
+
+on:
+  schedule:
+  - cron: '0 * * * *'
+  workflow_dispatch: # Allow manual triggering
+
+permissions:
+  contents: write  # Allow writing to repository contents
+  actions: read    # Allow reading actions
+
+jobs:
+  check-for-changes:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check ocaml/opam-repository
+        id: check-ocaml
+        run: |
+          LATEST_COMMIT=$(curl -s "https://api.github.com/repos/ocaml/opam-repository/commits/master" | jq -r '.sha')
+          echo "latest_commit=$LATEST_COMMIT" >> $GITHUB_OUTPUT
+          echo $LATEST_COMMIT
+          
+          if [ -f .last-ocaml-commit ]; then
+            LAST_COMMIT=$(cat .last-ocaml-commit)
+          else
+            LAST_COMMIT=""
+          fi
+          
+          if [ "$LATEST_COMMIT" != "$LAST_COMMIT" ]; then
+            echo "changes_detected=true" >> $GITHUB_OUTPUT
+            echo $LATEST_COMMIT > .last-ocaml-commit.new
+          else
+            echo "changes_detected=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check oxcaml/opam-repository
+        id: check-oxcaml
+        run: |
+          LATEST_COMMIT=$(curl -s "https://api.github.com/repos/oxcaml/opam-repository/commits/main" | jq -r '.sha')
+          echo "latest_commit=$LATEST_COMMIT" >> $GITHUB_OUTPUT
+          echo $LATEST_COMMIT
+          
+          if [ -f .last-oxcaml-commit ]; then
+            LAST_COMMIT=$(cat .last-oxcaml-commit)
+          else
+            LAST_COMMIT=""
+          fi
+          
+          if [ "$LATEST_COMMIT" != "$LAST_COMMIT" ]; then
+            echo "changes_detected=true" >> $GITHUB_OUTPUT
+            echo $LATEST_COMMIT > .last-oxcaml-commit.new
+          else
+            echo "changes_detected=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run build script if changes detected
+        if: steps.check-ocaml.outputs.changes_detected == 'true' || steps.check-oxcaml.outputs.changes_detected == 'true'
+        run: |
+          git remote add ocaml https://github.com/ocaml/opam-repository
+          git fetch ocaml master:opam-repo-master
+          git remote add oxcaml https://github.com/oxcaml/opam-repository
+          git fetch oxcaml main:oxcaml-main
+          git checkout opam-repo-master
+          git checkout oxcaml-main -- packages
+          git checkout master -- merge.sh
+          rm .github/workflows/*
+          git checkout master -- .github/workflows/monitor-repos.yml
+          git checkout master -- .github/workflows/opam-test.yml
+          chmod +x ./merge.sh
+          ./merge.sh -y packages
+          git add merge.sh .github/workflows packages
+          if [ -f .last-ocaml-commit.new ] ; then mv .last-ocaml-commit.new .last-ocaml-commit ; else git checkout master -- .last-ocaml-commit ; fi
+          if [ -f .last-oxcaml-commit.new ] ; then mv .last-oxcaml-commit.new .last-oxcaml-commit ; else git checkout master -- .last-oxcaml-commit ; fi
+          git add .last-*-commit
+
+      - name: Commit files
+        if: steps.check-ocaml.outputs.changes_detected == 'true' || steps.check-oxcaml.outputs.changes_detected == 'true'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git diff --staged --quiet || git commit -m "Update last commit tracking"
+          git push origin HEAD:master --force
