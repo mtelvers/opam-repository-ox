@@ -28,3 +28,7 @@ Please see https://oxcaml.org/get-oxcaml/ for more information"]
 # oxcaml/opam-repository is enabled.
 conflicts: "oxcaml-compiler"
 flags: avoid-version
+# This package in oxcaml/opam-repository is intended to override the package in
+# ocaml/opam-repository so that once the user has added the overlay, the switch
+# upgrades to oxcaml.latest (or oxcaml.archived).
+available: false
